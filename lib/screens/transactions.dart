@@ -47,11 +47,18 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       });
     return ScreenList(
       title: 'Transactions',
+      pinned: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          MonthBar(month: month, onChanged: (m) => setState(() => month = m)),
+            const SizedBox(height: 8),
+           Text('${rows.length} ${rows.length == 1 ? 'entry' : 'entries'} this month', style: const TextStyle(color: C.slate, fontSize: 12)),
+    
+        ],
+      ),
       children: [
-        MonthBar(month: month, onChanged: (m) => setState(() => month = m)),
-        const SizedBox(height: 12),
-        Text('${rows.length} ${rows.length == 1 ? 'entry' : 'entries'} this month', style: const TextStyle(color: C.slate, fontSize: 12)),
-        const SizedBox(height: 8),
+       
         if (rows.isEmpty) const Panel(child: EmptyNote('No transactions this month.')),
         for (final t in rows)
           Padding(

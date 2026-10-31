@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -65,19 +66,19 @@ class _EntryScreenState extends State<EntryScreen> {
     final pending = c != null && isRepayment(c) ? pendingFrom(app.history, dayKey(date), c) : <Pending>[];
     return ScreenList(
       title: 'New entry',
-      children: [
-        Panel(
+      pinned: Panel(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('Amount (AED)', style: TextStyle(color: C.slate, fontSize: 12)),
             TextField(
               controller: amountCtrl,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))],
               style: const TextStyle(fontSize: 38, fontWeight: FontWeight.w800, color: C.navy),
               decoration: const InputDecoration(border: InputBorder.none, hintText: '0.00'),
             ),
           ]),
         ),
-        const SizedBox(height: 16),
+      children: [
         const Text('Category', style: TextStyle(color: C.slate, fontSize: 12)),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 8, children: [

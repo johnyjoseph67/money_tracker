@@ -28,10 +28,10 @@ class _DebtsScreenState extends State<DebtsScreen> {
     final addLabel = payable ? 'Borrowed' : 'Lent';
     final paidLabel = payable ? 'Settled' : 'Received';
     return ScreenList(
-      title: 'Debts',
-      children: [
+      title: 'Debits',
+      pinned: Column(children: [
         MonthBar(month: month, onChanged: (m) => setState(() => month = m)),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
           child: SegmentedButton<int>(
@@ -44,7 +44,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
             onSelectionChanged: (s) => setState(() => tab = s.first),
           ),
         ),
-        const SizedBox(height: 14),
+          const SizedBox(height: 14),
         Panel(
           color: color,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -53,6 +53,9 @@ class _DebtsScreenState extends State<DebtsScreen> {
           ]),
         ),
         const SizedBox(height: 14),
+      ]),
+      children: [
+        
         if (rows.isEmpty) Panel(child: EmptyNote(payable ? 'No payable balance or activity.' : 'No receivable balance or activity.')),
         for (final r in rows)
           Padding(

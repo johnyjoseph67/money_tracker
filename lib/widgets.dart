@@ -28,19 +28,29 @@ class Panel extends StatelessWidget {
 class ScreenList extends StatelessWidget {
   final String title;
   final Widget? trailing;
-  final List<Widget> children;
-  const ScreenList({super.key, required this.title, this.trailing, required this.children});
+  final Widget? pinned; // stays fixed under the title (e.g. the month bar)
+  final List<Widget> children; // only this part scrolls
+  const ScreenList({super.key, required this.title, this.trailing, this.pinned, required this.children});
   @override
   Widget build(BuildContext context) => SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
           children: [
-            Row(children: [
-              Expanded(child: Text(title, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: C.navy))),
-              if (trailing != null) trailing!,
-            ]),
-            const SizedBox(height: 16),
-            ...children,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+              child: Column(children: [
+                Row(children: [
+                  Expanded(child: Text(title, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: C.navy))),
+                  if (trailing != null) trailing!,
+                ]),
+                if (pinned != null) ...[const SizedBox(height: 12), pinned!],
+              ]),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                children: children,
+              ),
+            ),
           ],
         ),
       );

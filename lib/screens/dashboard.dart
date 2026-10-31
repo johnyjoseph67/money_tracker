@@ -37,10 +37,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
         icon: const Icon(Icons.settings_rounded),
       ),
-      children: [
-        MonthBar(month: month, onChanged: (m) => setState(() => month = m)),
-        const SizedBox(height: 16),
-        Container(
+      pinned: Column(
+        children: [
+          MonthBar(month: month, onChanged: (m) => setState(() => month = m)),
+            const SizedBox(height: 18),
+           Container(
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(color: C.navy, borderRadius: BorderRadius.circular(28)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -65,6 +66,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ]),
           ]),
         ),
+        ],
+      ),
+      children: [
+       
         const SizedBox(height: 14),
         Row(children: [
           Expanded(child: StatTile(label: 'Expenses / Savings', value: aed(cash.expenses), color: C.red, icon: Icons.trending_down_rounded)),
@@ -85,14 +90,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ]),
         const SizedBox(height: 16),
         _Chart('Spending mix', SpendDonut(cash)),
-        _Chart(
-          'Cash flow this month',
-          MiniBars(
-            labels: const ['Salary', 'In', 'Spent', 'Out', 'Cash'],
-            values: [cash.salary / 100, cash.received / 100, cash.expenses / 100, cash.paid / 100, cash.closing / 100],
-            colors: const [C.teal, C.green, C.red, C.orange, C.blue],
-          ),
-        ),
+        // _Chart(
+        //   'Cash flow this month',
+        //   MiniBars(
+        //     labels: const ['Salary', 'In', 'Spent', 'Out', 'Cash'],
+        //     values: [cash.salary / 100, cash.received / 100, cash.expenses / 100, cash.paid / 100, cash.closing / 100],
+        //     colors: const [C.teal, C.green, C.red, C.orange, C.blue],
+        //   ),
+        // ),
         _Chart('12-month trend', TrendLines(history: app.history, salaries: app.salaries, initial: app.initial, month: month)),
         _Chart(
           'Pending balances',

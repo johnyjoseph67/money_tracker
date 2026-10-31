@@ -47,9 +47,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     final cash = cashSummary(app.history, app.salaries, month, app.initial);
     return ScreenList(
       title: 'Categories',
+      pinned: MonthBar(month: month, onChanged: (m) => setState(() => month = m)),
       children: [
-        MonthBar(month: month, onChanged: (m) => setState(() => month = m)),
-        const SizedBox(height: 16),
         Panel(
           color: C.teal,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
