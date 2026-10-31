@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:money_tracker/loading_overlay.dart';
 import 'package:provider/provider.dart';
 
 import 'app_state.dart';
@@ -21,6 +22,12 @@ class MoneyApp extends StatelessWidget {
         title: 'My Book',
         debugShowCheckedModeBanner: false,
         theme: buildTheme(),
+        // the overlay sits above every page, dialog and sheet
+        builder: (context, child) => Stack(
+          textDirection: TextDirection.ltr,
+          fit: StackFit.expand,
+          children: [child!, const Positioned.fill(child: LoadingOverlay())],
+        ),
         home: const Gate(),
       );
 }
@@ -30,7 +37,7 @@ class Gate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
-    if (app.loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (app.loading) return const Scaffold(); // the centre overlay shows the progress indicator
     if (app.error != null) {
       return Scaffold(
         body: Center(
