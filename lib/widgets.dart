@@ -1,6 +1,8 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:money_tracker/settings.dart' show SettingsScreen;
 import 'package:provider/provider.dart';
 
 import 'app_state.dart';
@@ -27,27 +29,64 @@ class Panel extends StatelessWidget {
 
 class ScreenList extends StatelessWidget {
   final String title;
-  final Widget? trailing;
-  final Widget? pinned; // stays fixed under the title (e.g. the month bar)
+  final Widget? trailing; // extra action shown before sync and settings
+  final Widget? pinned; // stays fixed under the app bar (e.g. the month bar)
   final List<Widget> children; // only this part scrolls
   const ScreenList({super.key, required this.title, this.trailing, this.pinned, required this.children});
+
+  Future<void> _sync(BuildContext context) async {
+    try {
+      await context.read<AppState>().refresh();
+      if (context.mounted) toast(context, 'Synced with Google Sheet');
+    } catch (e) {
+      if (context.mounted) toast(context, errText(e), error: true);
+    }
+  }
+
   @override
-  Widget build(BuildContext context) => SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-              child: Column(children: [
-                Row(children: [
-                  Expanded(child: Text(title, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: C.navy))),
-                  if (trailing != null) trailing!,
-                ]),
-                if (pinned != null) ...[const SizedBox(height: 12), pinned!],
-              ]),
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(
+          // same look as the bottom bar: white surface, teal icons on a mint chip
+          backgroundColor: Colors.white,
+          foregroundColor: C.navy,
+          elevation: 3,
+          scrolledUnderElevation: 3,
+          shadowColor: const Color(0x330F172A),
+          surfaceTintColor: Colors.transparent,
+          systemOverlayStyle: SystemUiOverlayStyle.dark,
+          leadingWidth: 60,
+          leading: Center(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.asset('assets/icons/icon_foreground.png', width: 58, height: 58, filterQuality: FilterQuality.medium),
             ),
+          ),
+          titleSpacing: 4,
+          title: Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: C.navy)),
+          actions: [
+            if (trailing != null) trailing!,
+            IconButton(
+              tooltip: 'Sync',
+              style: IconButton.styleFrom(backgroundColor: C.chip, foregroundColor: C.teal),
+              icon: const Icon(Icons.sync_rounded),
+              onPressed: () => _sync(context),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              tooltip: 'Settings',
+              style: IconButton.styleFrom(backgroundColor: C.chip, foregroundColor: C.teal),
+              icon: const Icon(Icons.settings_rounded),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+            ),
+            const SizedBox(width: 16),
+          ],
+        ),
+        body: Column(
+          children: [
+            if (pinned != null) Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 12), child: pinned!),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                padding: EdgeInsets.fromLTRB(20, pinned == null ? 16 : 4, 20, 24),
                 children: children,
               ),
             ),

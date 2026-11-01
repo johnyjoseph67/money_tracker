@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:money_tracker/settings.dart';
 import 'package:provider/provider.dart';
 
 import '../app_state.dart';
@@ -8,7 +7,6 @@ import '../logic.dart';
 import '../models.dart';
 import '../theme.dart';
 import '../widgets.dart';
-
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -31,17 +29,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return ScreenList(
       title: 'My Book',
-      trailing: IconButton.filled(
-        style: IconButton.styleFrom(backgroundColor: Colors.white, foregroundColor: C.navy),
-        tooltip: 'Settings',
-        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
-        icon: const Icon(Icons.settings_rounded),
-      ),
-      pinned: Column(
-        children: [
-          MonthBar(month: month, onChanged: (m) => setState(() => month = m)),
-            const SizedBox(height: 18),
-           Container(
+      pinned: MonthBar(month: month, onChanged: (m) => setState(() => month = m)),
+      children: [
+        Container(
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(color: C.navy, borderRadius: BorderRadius.circular(28)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -66,10 +56,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ]),
           ]),
         ),
-        ],
-      ),
-      children: [
-       
         const SizedBox(height: 14),
         Row(children: [
           Expanded(child: StatTile(label: 'Expenses / Savings', value: aed(cash.expenses), color: C.red, icon: Icons.trending_down_rounded)),

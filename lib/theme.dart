@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class C {
   static const navy = Color(0xFF0F172A);
@@ -17,6 +18,34 @@ ThemeData buildTheme() => ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(seedColor: C.teal, primary: C.teal),
       scaffoldBackgroundColor: C.paper,
-      appBarTheme: const AppBarTheme(backgroundColor: C.paper, foregroundColor: C.navy, elevation: 0, scrolledUnderElevation: 0),
-      navigationBarTheme: const NavigationBarThemeData(backgroundColor: Colors.white, indicatorColor: C.chip, height: 72),
+      // App bar: white with navy content (also used by the Settings page)
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.white,
+        foregroundColor: C.navy,
+        elevation: 3,
+        scrolledUnderElevation: 3,
+        shadowColor: Color(0x330F172A),
+        surfaceTintColor: Colors.transparent,
+        centerTitle: false,
+        systemOverlayStyle: SystemUiOverlayStyle.dark,
+      ),
+      // Bottom bar: white surface, mint pill behind the selected tab, teal selected / slate unselected
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        elevation: 8,
+        shadowColor: const Color(0x330F172A),
+        indicatorColor: C.chip,
+        height: 74,
+        iconTheme: WidgetStateProperty.resolveWith(
+          (s) => IconThemeData(color: s.contains(WidgetState.selected) ? C.teal : C.slate, size: 26),
+        ),
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (s) => TextStyle(
+            fontSize: 12,
+            fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
+            color: s.contains(WidgetState.selected) ? C.teal : C.slate,
+          ),
+        ),
+      ),
     );
