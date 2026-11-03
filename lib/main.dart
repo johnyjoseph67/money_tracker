@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:money_tracker/settings.dart' show SettingsScreen;
 import 'package:provider/provider.dart';
 
+import 'app_drawer.dart';
 import 'app_state.dart';
 import 'loading_overlay.dart';
+import 'screens/auth.dart';
 import 'screens/categories.dart';
 import 'screens/dashboard.dart';
 import 'screens/debts.dart';
 import 'screens/entry.dart';
 import 'screens/transactions.dart';
 import 'theme.dart';
+import 'widgets.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(ChangeNotifierProvider(create: (_) => AppState()..load(), child: const MoneyApp()));
+  runApp(ChangeNotifierProvider(create: (_) => AppState()..init(), child: const MoneyApp()));
 }
 
 class MoneyApp extends StatelessWidget {
@@ -22,7 +27,7 @@ class MoneyApp extends StatelessWidget {
         title: 'My Book',
         debugShowCheckedModeBanner: false,
         theme: buildTheme(),
-        // the overlay sits above every page, dialog and sheet
+        // the loading overlay sits above every page, dialog and sheet
         builder: (context, child) => Stack(
           textDirection: TextDirection.ltr,
           fit: StackFit.expand,
@@ -32,11 +37,14 @@ class MoneyApp extends StatelessWidget {
       );
 }
 
+/// Decides what to show: nothing yet, sign-in, loading, an error, or the app.
 class Gate extends StatelessWidget {
   const Gate({super.key});
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
+    if (!app.ready) return const Scaffold();
+    if (!app.signedIn) return const AuthScreen();
     if (app.loading) return const Scaffold(); // the centre overlay shows the progress indicator
     if (app.error != null) {
       return Scaffold(
@@ -49,6 +57,7 @@ class Gate extends StatelessWidget {
               Text(app.error!, textAlign: TextAlign.center),
               const SizedBox(height: 16),
               FilledButton(onPressed: app.load, child: const Text('Try again')),
+              TextButton(onPressed: app.logout, child: const Text('Log out')),
             ]),
           ),
         ),
@@ -69,6 +78,7 @@ class _ShellState extends State<Shell> {
   int index = 0;
   bool _animating = false;
 
+  static const titles = ['My Book', 'Activity', 'New entry', 'Categories', 'Debts'];
   static const pages = <Widget>[
     DashboardScreen(),
     TransactionsScreen(),
@@ -90,8 +100,52 @@ class _ShellState extends State<Shell> {
     _animating = false;
   }
 
+  Future<void> _sync() async {
+    try {
+      await context.read<AppState>().refresh();
+      if (mounted) toast(context, 'Synced with Google Sheet');
+    } catch (e) {
+      if (mounted) toast(context, errText(e), error: true);
+    }
+  }
+
+  ButtonStyle get _chip => IconButton.styleFrom(backgroundColor: C.chip, foregroundColor: C.teal);
+
   @override
   Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          foregroundColor: C.navy,
+          elevation: 3,
+          scrolledUnderElevation: 3,
+          shadowColor: const Color(0x330F172A),
+          surfaceTintColor: Colors.transparent,
+          systemOverlayStyle: SystemUiOverlayStyle.dark,
+          leadingWidth: 64,
+          leading: Builder(
+            builder: (ctx) => Center(
+              child: IconButton(tooltip: 'Menu', style: _chip, icon: const Icon(Icons.menu_rounded), onPressed: () => Scaffold.of(ctx).openDrawer()),
+            ),
+          ),
+          titleSpacing: 4,
+          title: Row(children: [
+            ClipRRect(borderRadius: BorderRadius.circular(9), child: Image.asset('assets/icons/app_logo.png', width: 32, height: 32)),
+            const SizedBox(width: 10),
+            Text(titles[index], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: C.navy)),
+          ]),
+          actions: [
+            IconButton(tooltip: 'Sync', style: _chip, icon: const Icon(Icons.sync_rounded), onPressed: _sync),
+            const SizedBox(width: 8),
+            IconButton(
+              tooltip: 'Settings',
+              style: _chip,
+              icon: const Icon(Icons.settings_rounded),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+            ),
+            const SizedBox(width: 16),
+          ],
+        ),
+        drawer: const AppDrawer(),
         body: PageView(
           controller: controller,
           onPageChanged: (i) {
@@ -129,4 +183,4 @@ class _KeepAlivePageState extends State<KeepAlivePage> with AutomaticKeepAliveCl
     super.build(context);
     return widget.child;
   }
-} 
+}

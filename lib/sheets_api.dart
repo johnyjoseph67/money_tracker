@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import 'config.dart';
 import 'models.dart';
 
 class Snapshot {
@@ -12,18 +11,32 @@ class Snapshot {
   Snapshot(this.txns, this.salaries, this.initial);
 }
 
-/// Talks to the Apps Script web app. Every call returns the full, fresh snapshot.
+/// Talks to the Apps Script web app. URL and token come from registration / login (not from source code).
 class SheetsApi {
+  String? url, token;
+
+  void configure(String u, String t) {
+    url = u.trim();
+    token = t.trim();
+  }
+
+  /// Data calls: every call returns the full, fresh snapshot.
   Future<Snapshot> call(String action, [Map<String, dynamic> extra = const {}]) async {
-    if (sheetsUrl.contains('XXXX') || sheetsToken.startsWith('PUT-A-LONG')) {
-      throw const FormatException('Set sheetsUrl and sheetsToken in lib/config.dart.');
-    }
+    final u = url, t = token;
+    if (u == null || t == null) throw const FormatException('Not connected. Please sign in again.');
+    return _parse(await post(u, t, action, extra));
+  }
+
+  /// Low-level call with an explicit URL and token (register, login, test connection).
+  Future<Map<String, dynamic>> post(String u, String t, String action, [Map<String, dynamic> extra = const {}]) async {
+    if (!u.trim().startsWith('https://')) throw const FormatException('Enter the full Web app URL, starting with https://');
+    if (t.trim().isEmpty) throw const FormatException('Enter the API token.');
     final client = http.Client();
     try {
-      final req = http.Request('POST', Uri.parse(sheetsUrl))
+      final req = http.Request('POST', Uri.parse(u.trim()))
         ..followRedirects = false // Apps Script answers POST with a redirect; we follow it with GET
         ..headers['Content-Type'] = 'text/plain;charset=utf-8'
-        ..body = jsonEncode({'token': sheetsToken, 'action': action, ...extra});
+        ..body = jsonEncode({'token': t.trim(), 'action': action, ...extra});
       var res = await http.Response.fromStream(await client.send(req)).timeout(const Duration(seconds: 90));
       if (res.statusCode >= 300 && res.statusCode < 400) {
         final loc = res.headers['location'];
@@ -37,11 +50,11 @@ class SheetsApi {
         throw const FormatException('Unexpected reply. In the deployment, set Execute as: Me and Who has access: Anyone, then deploy a new version.');
       }
       if (map['ok'] != true) throw FormatException(map['error']?.toString() ?? 'Request failed.');
-      return _parse(map['data'] as Map<String, dynamic>);
+      return (map['data'] ?? <String, dynamic>{}) as Map<String, dynamic>;
     } on FormatException {
       rethrow;
     } catch (_) {
-      throw const FormatException('Network problem. Check your internet connection and try again.');
+      throw const FormatException('Network problem. Check your internet connection and the URL, then try again.');
     } finally {
       client.close();
     }
