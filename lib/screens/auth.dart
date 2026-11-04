@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../app_info.dart';
 import '../app_state.dart';
+import '../biometric_service.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
@@ -63,6 +64,8 @@ class _LoginPageState extends State<LoginPage> {
   final token = TextEditingController();
   bool hide = true;
   bool remember = false;
+  bool bioAvailable = false;
+  final bioService = BiometricService();
   late bool showConn;
 
   @override
@@ -79,6 +82,9 @@ class _LoginPageState extends State<LoginPage> {
       pass.text = saved.password;
       remember = true;
     }
+    bioService.available().then((v) {
+      if (mounted) setState(() => bioAvailable = v);
+    });
   }
 
   @override
@@ -102,6 +108,29 @@ class _LoginPageState extends State<LoginPage> {
             url: showConn ? url.text : null,
             token: showConn ? token.text : null,
           );
+    } catch (e) {
+      if (mounted) toast(context, errText(e), error: true);
+    }
+  }
+
+  /// Fingerprint / face, then sign in with the password saved by "Remember password".
+  Future<void> _signInWithBiometrics() async {
+    final app = context.read<AppState>();
+    final saved = app.savedCredentials;
+    if (saved == null) return;
+    final problem = await bioService.authenticate(); // null = success, otherwise the reason
+    if (problem != null) {
+      if (mounted) toast(context, problem, error: true);
+      return;
+    }
+    try {
+      await app.login(
+        username: saved.username,
+        password: saved.password,
+        remember: true,
+        url: showConn ? url.text : null,
+        token: showConn ? token.text : null,
+      );
     } catch (e) {
       if (mounted) toast(context, errText(e), error: true);
     }
@@ -152,6 +181,11 @@ class _LoginPageState extends State<LoginPage> {
                       dense: true,
                       activeColor: C.teal,
                     ),
+                    if (bioAvailable && context.read<AppState>().savedCredentials == null)
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 4),
+                        child: Text('Tick Remember password once to turn on fingerprint / face sign-in.', style: TextStyle(fontSize: 12, color: C.slate)),
+                      ),
                     if (showConn) ...[
                       const SizedBox(height: 8),
                       const Text('Google Sheet connection', style: TextStyle(fontWeight: FontWeight.w700, color: C.navy)),
@@ -167,6 +201,21 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     const SizedBox(height: 12),
                     FilledButton(style: _primary(), onPressed: _submit, child: const Text('Sign in')),
+                    if (bioAvailable && context.read<AppState>().savedCredentials != null) ...[
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: C.teal,
+                          minimumSize: const Size.fromHeight(52),
+                          side: const BorderSide(color: C.teal, width: 1.5),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+                          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                        ),
+                        onPressed: _signInWithBiometrics,
+                        icon: const Icon(Icons.fingerprint_rounded, size: 26),
+                        label: const Text('Sign in with fingerprint / face'),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     Center(
                       child: TextButton(
