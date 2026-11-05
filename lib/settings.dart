@@ -56,6 +56,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _turnOffBiometrics() async {
+    await context.read<AppState>().disableBiometricLogin();
+    if (mounted) toast(context, 'Fingerprint / face sign-in turned off');
+  }
+
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
@@ -74,6 +79,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             FilledButton(onPressed: busy ? null : _saveInitial, child: const Text('Save')),
           ]),
         ),
+        if (app.savedCredentials != null) ...[
+          const SizedBox(height: 16),
+          Panel(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Fingerprint / face sign-in', style: TextStyle(fontWeight: FontWeight.w700, color: C.navy)),
+              const SizedBox(height: 6),
+              const Text("Turned on. Your password is kept in the phone's secure storage and the sign-in page is never pre-filled.", style: TextStyle(fontSize: 12, color: C.slate)),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(onPressed: busy ? null : _turnOffBiometrics, icon: const Icon(Icons.fingerprint_rounded), label: const Text('Turn off')),
+            ]),
+          ),
+        ],
         const SizedBox(height: 16),
         Panel(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

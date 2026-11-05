@@ -41,7 +41,7 @@ class AppDrawer extends StatelessWidget {
           width: double.infinity,
           color: C.navy,
           padding: EdgeInsets.fromLTRB(24, top + 32, 24, 28),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
             Container(
               width: 88,
               height: 88,

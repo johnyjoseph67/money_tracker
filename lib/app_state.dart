@@ -102,6 +102,13 @@ class AppState extends ChangeNotifier {
     await load();
   }
 
+  /// Forget the saved password used by fingerprint / face sign-in.
+  Future<void> disableBiometricLogin() async {
+    await _store.clearCredentials();
+    savedCredentials = null;
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     user = null;
     history = [];

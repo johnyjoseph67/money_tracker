@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'app_state.dart';
@@ -149,29 +150,173 @@ void toast(BuildContext context, String message, {bool error = false}) {
     ));
 }
 
+/// Salary "top-up" dialog for the selected month.
 Future<void> showSalaryDialog(BuildContext context, String month) async {
   final app = context.read<AppState>();
-  final ctrl = TextEditingController(text: (app.salaries[month] ?? 0) == 0 ? '' : ((app.salaries[month]!) / 100).toStringAsFixed(2));
-  final ok = await showDialog<bool>(
+  final value = await showDialog<double>(
     context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text('Salary — ${monthLabel(month)}'),
-      content: TextField(controller: ctrl, autofocus: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: deco('Monthly salary (AED)')),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
-      ],
-    ),
+    builder: (_) => _SalaryDialog(month: month, current: app.salaries[month] ?? 0),
   );
-  if (ok != true || !context.mounted) return;
-  final v = double.tryParse(ctrl.text.replaceAll(',', ''));
-  if (v == null) {
-    toast(context, 'Enter salary as zero or a positive amount.', error: true);
-    return;
-  }
+  if (value == null || !context.mounted) return;
   try {
-    await app.setSalary(month, v);
+    await app.setSalary(month, value);
   } catch (e) {
     if (context.mounted) toast(context, errText(e), error: true);
   }
+}
+
+class _SalaryDialog extends StatefulWidget {
+  final String month;
+  final int current; // cents
+  const _SalaryDialog({required this.month, required this.current});
+  @override
+  State<_SalaryDialog> createState() => _SalaryDialogState();
+}
+
+class _SalaryDialogState extends State<_SalaryDialog> {
+  late final TextEditingController ctrl;
+  String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    ctrl = TextEditingController(text: widget.current == 0 ? '' : (widget.current / 100).toStringAsFixed(2));
+  }
+
+  @override
+  void dispose() {
+    ctrl.dispose();
+    super.dispose();
+  }
+
+  double get _value => double.tryParse(ctrl.text.replaceAll(',', '')) ?? 0;
+
+  void _add(int amount) {
+    final text = (_value + amount).toStringAsFixed(2);
+    setState(() {
+      error = null;
+      ctrl.value = TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
+    });
+  }
+
+  void _save() {
+    final v = double.tryParse(ctrl.text.replaceAll(',', ''));
+    if (v == null || v < 0) {
+      setState(() => error = 'Enter salary as zero or a positive amount.');
+      return;
+    }
+    Navigator.pop(context, v);
+  }
+
+  @override
+  Widget build(BuildContext context) => Dialog(
+        backgroundColor: Colors.white,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(color: C.chip, borderRadius: BorderRadius.circular(16)),
+                child: const Icon(Icons.account_balance_wallet_rounded, color: C.teal, size: 28),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Set salary', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: C.navy)),
+                  const SizedBox(height: 2),
+                  Text(monthLabel(widget.month), style: const TextStyle(fontSize: 13, color: C.slate)),
+                ]),
+              ),
+              IconButton(tooltip: 'Close', onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close_rounded, color: C.slate)),
+            ]),
+            const SizedBox(height: 20),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
+              decoration: BoxDecoration(color: C.paper, borderRadius: BorderRadius.circular(20)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Monthly salary', style: TextStyle(fontSize: 12, color: C.slate)),
+                TextField(
+                  controller: ctrl,
+                  autofocus: true,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))],
+                  onChanged: (_) => setState(() => error = null),
+                  onSubmitted: (_) => _save(),
+                  style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800, color: C.navy),
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    hintText: '0.00',
+                    prefixText: 'AED ',
+                    prefixStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: C.teal),
+                    errorText: error,
+                  ),
+                ),
+              ]),
+            ),
+            if (widget.current > 0) ...[
+              const SizedBox(height: 10),
+              Text('Current salary: AED ${aed(widget.current)}', style: const TextStyle(fontSize: 12, color: C.slate)),
+            ],
+            const SizedBox(height: 14),
+            const Text('Quick add', style: TextStyle(fontSize: 12, color: C.slate)),
+            const SizedBox(height: 8),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              for (final q in const [500, 1000, 5000])
+                ActionChip(
+                  label: Text('+${q >= 1000 ? '${q ~/ 1000},000' : q}'),
+                  labelStyle: const TextStyle(color: C.teal, fontWeight: FontWeight.w700),
+                  backgroundColor: C.chip,
+                  side: BorderSide.none,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  onPressed: () => _add(q),
+                ),
+              ActionChip(
+                label: const Text('Clear'),
+                labelStyle: const TextStyle(color: C.slate, fontWeight: FontWeight.w600),
+                backgroundColor: C.paper,
+                side: BorderSide.none,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                onPressed: () => setState(() {
+                  error = null;
+                  ctrl.clear();
+                }),
+              ),
+            ]),
+            const SizedBox(height: 24),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: C.slate,
+                    minimumSize: const Size.fromHeight(52),
+                    side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: C.teal,
+                    minimumSize: const Size.fromHeight(52),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+                  ),
+                  onPressed: _save,
+                  icon: const Icon(Icons.check_rounded),
+                  label: const Text('Save salary', style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ]),
+          ]),
+        ),
+      );
 }

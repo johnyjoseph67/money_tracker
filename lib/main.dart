@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:money_tracker/settings.dart' show SettingsScreen;
+import 'package:money_tracker/settings.dart';
 import 'package:provider/provider.dart';
 
 import 'app_drawer.dart';
@@ -33,8 +33,19 @@ class MoneyApp extends StatelessWidget {
           fit: StackFit.expand,
           children: [child!, const Positioned.fill(child: LoadingOverlay())],
         ),
+        navigatorObservers: [_UnfocusObserver()],
         home: const Gate(),
       );
+}
+
+/// When any dialog, sheet or page opens or closes, clear the text focus.
+/// Otherwise Flutter gives focus back to the last field (e.g. the Add page amount) and the keyboard pops up.
+class _UnfocusObserver extends NavigatorObserver {
+  void _unfocus() => FocusManager.instance.primaryFocus?.unfocus();
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) => _unfocus();
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => _unfocus();
 }
 
 /// Decides what to show: nothing yet, sign-in, loading, an error, or the app.
@@ -93,7 +104,10 @@ class _ShellState extends State<Shell> {
     super.dispose();
   }
 
+  void _hideKeyboard() => FocusManager.instance.primaryFocus?.unfocus();
+
   Future<void> _go(int i) async {
+    _hideKeyboard();
     setState(() => index = i);
     _animating = true; // ignore page callbacks while animating, so the nav bar doesn't flicker
     await controller.animateToPage(i, duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
@@ -124,7 +138,11 @@ class _ShellState extends State<Shell> {
           leadingWidth: 64,
           leading: Builder(
             builder: (ctx) => Center(
-              child: IconButton(tooltip: 'Menu', style: _chip, icon: const Icon(Icons.menu_rounded), onPressed: () => Scaffold.of(ctx).openDrawer()),
+              child: IconButton(tooltip: 'Menu', style: _chip, icon: const Icon(Icons.menu_rounded), onPressed: () {
+                  _hideKeyboard();
+                  Scaffold.of(ctx).openDrawer();
+                },
+              ),
             ),
           ),
           titleSpacing: 4,
@@ -146,9 +164,11 @@ class _ShellState extends State<Shell> {
           ],
         ),
         drawer: const AppDrawer(),
+        onDrawerChanged: (_) => _hideKeyboard(),
         body: PageView(
           controller: controller,
           onPageChanged: (i) {
+            _hideKeyboard();
             if (!_animating) setState(() => index = i);
           },
           children: [for (final p in pages) KeepAlivePage(child: p)],

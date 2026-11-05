@@ -63,7 +63,6 @@ class _LoginPageState extends State<LoginPage> {
   final url = TextEditingController();
   final token = TextEditingController();
   bool hide = true;
-  bool remember = false;
   bool bioAvailable = false;
   final bioService = BiometricService();
   late bool showConn;
@@ -76,12 +75,6 @@ class _LoginPageState extends State<LoginPage> {
     showConn = acc == null; // a new device must enter the connection once
     url.text = acc?.url ?? '';
     token.text = acc?.token ?? '';
-    final saved = app.savedCredentials; // filled in when 'Remember password' was ticked
-    if (saved != null) {
-      user.text = saved.username;
-      pass.text = saved.password;
-      remember = true;
-    }
     bioService.available().then((v) {
       if (mounted) setState(() => bioAvailable = v);
     });
@@ -96,21 +89,43 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  /// Fields always start empty. Sign in by typing the username and password, or with fingerprint / face.
   Future<void> _submit() async {
+    final app = context.read<AppState>();
     if (user.text.trim().isEmpty || pass.text.isEmpty) {
       return toast(context, 'Enter your username and password.', error: true);
     }
+    var remember = app.savedCredentials != null; // already on: keep the saved password up to date
+    if (!remember && bioAvailable) {
+      remember = await _askEnableBiometrics();
+      if (!mounted) return;
+    }
     try {
-      await context.read<AppState>().login(
-            username: user.text.trim(),
-            password: pass.text,
-            remember: remember,
-            url: showConn ? url.text : null,
-            token: showConn ? token.text : null,
-          );
+      await app.login(
+        username: user.text.trim(),
+        password: pass.text,
+        remember: remember,
+        url: showConn ? url.text : null,
+        token: showConn ? token.text : null,
+      );
     } catch (e) {
       if (mounted) toast(context, errText(e), error: true);
     }
+  }
+
+  Future<bool> _askEnableBiometrics() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Use fingerprint / face next time?'),
+        content: const Text("Your password is kept in the phone's secure storage and is only used after a successful fingerprint or face check. The sign-in fields are never filled in for you."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Not now')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Enable')),
+        ],
+      ),
+    );
+    return ok == true;
   }
 
   /// Fingerprint / face, then sign in with the password saved by "Remember password".
@@ -132,7 +147,12 @@ class _LoginPageState extends State<LoginPage> {
         token: showConn ? token.text : null,
       );
     } catch (e) {
-      if (mounted) toast(context, errText(e), error: true);
+      final msg = errText(e);
+      if (msg.startsWith('Incorrect username or password')) {
+        await app.disableBiometricLogin(); // the saved password is out of date
+        if (mounted) setState(() {});
+      }
+      if (mounted) toast(context, msg, error: true);
     }
   }
 
@@ -172,20 +192,7 @@ class _LoginPageState extends State<LoginPage> {
                       decoration: _deco('Password', Icons.lock_outline_rounded,
                           suffix: IconButton(onPressed: () => setState(() => hide = !hide), icon: Icon(hide ? Icons.visibility_outlined : Icons.visibility_off_outlined))),
                     ),
-                    CheckboxListTile(
-                      value: remember,
-                      onChanged: (v) => setState(() => remember = v ?? false),
-                      title: const Text('Remember password', style: TextStyle(fontSize: 14, color: C.navy)),
-                      controlAffinity: ListTileControlAffinity.leading,
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                      activeColor: C.teal,
-                    ),
-                    if (bioAvailable && context.read<AppState>().savedCredentials == null)
-                      const Padding(
-                        padding: EdgeInsets.only(left: 4, bottom: 4),
-                        child: Text('Tick Remember password once to turn on fingerprint / face sign-in.', style: TextStyle(fontSize: 12, color: C.slate)),
-                      ),
+                    const SizedBox(height: 8),
                     if (showConn) ...[
                       const SizedBox(height: 8),
                       const Text('Google Sheet connection', style: TextStyle(fontWeight: FontWeight.w700, color: C.navy)),
