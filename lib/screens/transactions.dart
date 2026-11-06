@@ -15,6 +15,7 @@ class TransactionsScreen extends StatefulWidget {
 
 class _TransactionsScreenState extends State<TransactionsScreen> {
   String month = currentMonth();
+  String? filter; // null = all categories
 
   Future<bool> _confirmDelete(Txn t) async {
     final ok = await showDialog<bool>(
@@ -37,29 +38,67 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     return false; // the list rebuilds from state
   }
 
+  Widget _chip(String label, {required bool selected, required Color color, IconData? icon, required VoidCallback onTap}) => Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: ChoiceChip(
+          showCheckmark: false,
+          avatar: icon == null ? null : Icon(icon, size: 18, color: selected ? Colors.white : color),
+          label: Text(label),
+          selected: selected,
+          selectedColor: color,
+          backgroundColor: Colors.white,
+          side: BorderSide.none,
+          labelStyle: TextStyle(color: selected ? Colors.white : C.navy, fontWeight: FontWeight.w600),
+          onSelected: (_) => onTap(),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
-    final rows = app.history.where((t) => t.month == month).toList()
+    final all = app.history.where((t) => t.month == month).toList()
       ..sort((a, b) {
         final c = b.day.compareTo(a.day);
         return c != 0 ? c : b.savedAt.compareTo(a.savedAt);
       });
+    final rows = filter == null ? all : all.where((t) => t.category == filter).toList();
+
+    // only offer categories that exist this month (plus the one currently selected)
+    final present = categories.where((c) => all.any((t) => t.category == c)).toList();
+    if (filter != null && !present.contains(filter)) present.add(filter!);
+    final total = rows.fold<int>(0, (a, t) => a + t.amount);
+
     return ScreenList(
       title: 'Transactions',
-      pinned: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          MonthBar(month: month, onChanged: (m) => setState(() => month = m)),
-            const SizedBox(height: 8),
-           Text('${rows.length} ${rows.length == 1 ? 'entry' : 'entries'} this month', style: const TextStyle(color: C.slate, fontSize: 12)),
-    
-        ],
-      ),
+      pinned: Column(children: [
+        MonthBar(month: month, onChanged: (m) => setState(() => month = m)),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 44,
+          child: ListView(scrollDirection: Axis.horizontal, children: [
+            _chip('All', selected: filter == null, color: C.teal, icon: Icons.apps_rounded, onTap: () => setState(() => filter = null)),
+            for (final c in present) _chip(c, selected: filter == c, color: catColor(c), icon: catIcon(c), onTap: () => setState(() => filter = c)),
+          ]),
+        ),
+      ]),
       children: [
-       
-        if (rows.isEmpty) const Panel(child: EmptyNote('No transactions this month.')),
+        Row(children: [
+          Expanded(
+            child: Text(
+              filter == null ? '${all.length} ${all.length == 1 ? 'entry' : 'entries'} this month' : '${rows.length} of ${all.length} entries · $filter',
+              style: const TextStyle(color: C.slate, fontSize: 12),
+            ),
+          ),
+          if (filter != null && rows.isNotEmpty) Text('Total AED ${aed(total)}', style: TextStyle(color: catColor(filter!), fontSize: 13, fontWeight: FontWeight.w800)),
+        ]),
+        const SizedBox(height: 8),
+        if (rows.isEmpty)
+          Panel(
+            child: Column(children: [
+              EmptyNote(filter == null ? 'No transactions this month.' : 'No $filter transactions this month.'),
+              if (filter != null) TextButton(onPressed: () => setState(() => filter = null), child: const Text('Clear filter')),
+            ]),
+          ),
         for (final t in rows)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -101,4 +140,4 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       ],
     );
   }
-}
+} 
