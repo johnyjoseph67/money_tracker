@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:money_tracker/settings.dart';
 import 'package:provider/provider.dart';
 
 import 'app_drawer.dart';
@@ -13,7 +12,6 @@ import 'screens/debts.dart';
 import 'screens/entry.dart';
 import 'screens/transactions.dart';
 import 'theme.dart';
-import 'widgets.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -114,15 +112,6 @@ class _ShellState extends State<Shell> {
     _animating = false;
   }
 
-  Future<void> _sync() async {
-    try {
-      await context.read<AppState>().refresh();
-      if (mounted) toast(context, 'Synced with Google Sheet');
-    } catch (e) {
-      if (mounted) toast(context, errText(e), error: true);
-    }
-  }
-
   ButtonStyle get _chip => IconButton.styleFrom(backgroundColor: C.chip, foregroundColor: C.teal);
 
   @override
@@ -151,17 +140,6 @@ class _ShellState extends State<Shell> {
             const SizedBox(width: 10),
             Text(titles[index], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: C.navy)),
           ]),
-          actions: [
-            IconButton(tooltip: 'Sync', style: _chip, icon: const Icon(Icons.sync_rounded), onPressed: _sync),
-            const SizedBox(width: 8),
-            IconButton(
-              tooltip: 'Settings',
-              style: _chip,
-              icon: const Icon(Icons.settings_rounded),
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
-            ),
-            const SizedBox(width: 16),
-          ],
         ),
         drawer: const AppDrawer(),
         onDrawerChanged: (_) => _hideKeyboard(),
