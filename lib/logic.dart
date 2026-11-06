@@ -33,9 +33,9 @@ CashSummary cashSummary(List<Txn> h, Map<String, int> salaries, String month, in
 }
 
 class DebtRow {
-  final String name;
+  final String name, key;
   int opening = 0, added = 0, paid = 0;
-  DebtRow(this.name);
+  DebtRow(this.name, this.key);
   int get closing => opening + added - paid;
 }
 
@@ -44,7 +44,7 @@ List<DebtRow> debtSummary(List<Txn> h, String month, Pair p) {
   for (final t in h) {
     if (t.month.compareTo(month) > 0 || (t.category != p.add && t.category != p.subtract)) continue;
     final key = t.key.isEmpty ? '__missing__' : t.key;
-    final r = people.putIfAbsent(key, () => DebtRow(t.name.isEmpty ? 'NAME MISSING — correct the workbook' : t.name));
+    final r = people.putIfAbsent(key, () => DebtRow(t.name.isEmpty ? 'NAME MISSING — correct the sheet' : t.name, key));
     if (t.month.compareTo(month) < 0) {
       r.opening += t.category == p.add ? t.amount : -t.amount;
     } else if (t.category == p.add) {
@@ -55,6 +55,20 @@ List<DebtRow> debtSummary(List<Txn> h, String month, Pair p) {
   }
   return people.values.where((r) => r.opening != 0 || r.added != 0 || r.paid != 0).toList()
     ..sort((a, b) => a.name.compareTo(b.name));
+}
+
+/// Every borrow/lend and settlement/repayment entry of one person, oldest first, up to the end of [month].
+List<Txn> debtEntries(List<Txn> h, String month, Pair p, String key) {
+  return h
+      .where((t) =>
+          (t.category == p.add || t.category == p.subtract) &&
+          t.month.compareTo(month) <= 0 &&
+          (t.key.isEmpty ? '__missing__' : t.key) == key)
+      .toList()
+    ..sort((a, b) {
+      final c = a.day.compareTo(b.day);
+      return c != 0 ? c : (a.category == p.add ? 0 : 1) - (b.category == p.add ? 0 : 1);
+    });
 }
 
 class Pending {
