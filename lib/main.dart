@@ -134,11 +134,18 @@ class _ShellState extends State<Shell> {
               ),
             ),
           ),
-          titleSpacing: 4,
-          title: Row(children: [
+          
+          titleSpacing: 4,centerTitle: true,
+          title:
+          // Text(titles[index], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: C.navy)),
+          
+           Row(
+            children: [
+                      Text(titles[index], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: C.navy)),
+                      const Spacer(),
             ClipRRect(borderRadius: BorderRadius.circular(9), child: Image.asset('assets/icons/app_logo.png', width: 32, height: 32)),
             const SizedBox(width: 10),
-            Text(titles[index], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: C.navy)),
+    
           ]),
         ),
         drawer: const AppDrawer(),
